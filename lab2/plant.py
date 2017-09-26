@@ -18,10 +18,10 @@ class PlantUpgrade:
         return self.cost
 
 
-available_upgrades = [PlantUpgrade('Backlight',3),
-                      PlantUpgrade('Front Light', 4),
-                      PlantUpgrade('Water Sensor', 5),
-                      PlantUpgrade('Motion Sensor', 12)]
+available_upgrades = {'backlight':PlantUpgrade('Backlight',3),
+                      'frontlight':PlantUpgrade('Front Light', 4),
+                      'water_sensor':PlantUpgrade('Water Sensor', 5),
+                      'motion_sensor':PlantUpgrade('Motion Sensor', 12)}
 
 
 class Plant:
@@ -37,7 +37,7 @@ class Plant:
         Plant.event_log.append('{plant} joined our office!'\
                                 .format(plant=name))
 
-    def vote(self, voter):
+    def voted_by(self, voter):
         if voter not in self.voters:
             self.voters.append(voter)
             self.votes += 1
@@ -49,6 +49,7 @@ class Plant:
             return 'Upgrade not valid'
         if upgrade in self.upgrades:
             return 'Plant already have this upgrade'
+        upgrade = available_upgrades[upgrade]
         if self.votes >= upgrade.cost:
             self.votes -= upgrade.cost
             self.upgrades.append(upgrade)
@@ -72,7 +73,12 @@ class Plant:
                           'type': self.type,
                           'votes': self.votes,
                           'voters': self.voters,
-                          'upgrades': [up.name for up in self.upgrades]}
+                          'upgrades': [up for up in self.upgrades],
+                          'available_upg': ['{upgrade} (cost {cost})'\
+                                            .format(upgrade=up, cost=available_upgrades[up].cost)
+                                            for up in available_upgrades 
+                                            if up not in self.upgrades]}
+        return json.dumps(self_parameter)
 
 
 
