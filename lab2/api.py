@@ -92,7 +92,7 @@ def api_plant(name):
     if name not in plant_list:
         return 'Plant not found'
     else:
-        return plant_list[name].to_public_json()
+        return json.dumps(plant_list[name].to_public_json())
 
 @app.route('/myplant', methods = ['POST'])
 @requires_auth
@@ -110,26 +110,38 @@ def api_myplant():
     4) help: (show request format)
         request.body.operation = help 
     '''
-    def handle_view(name):
+    def handle_view(name, password):
         plant = plant_list[name]
-        return plant.to_private_json()
+        return json.dumps(plant.to_private_json(password))
 
-    def handle_upgrade(name, upgr):
-        plant = plant_list['name']
+    def handle_upgrade(name, upgr, password):
+        plant = plant_list[name]
         upgraded = plant.upgrade(upgr)
-        result_json = plant.to_private_json()
-        result_json.add('message',upgraded)
-        return result_json
+        result_json = plant.to_private_json(password)
+        result_json['message']=upgraded
+        return json.dumps(result_json)
+
+    def handle_vote(name, vote):
+        if vote not in plant_list:
+            return 'Invalid vote target'
+        this_plant = plant_list[name]
+        voted_plant = plant_list[vote]
+        voted_plant.voted_by(this_plant)
+        return '{this} votes for {that}'\
+                .format(this=name, that=vote)
 
     name = request.authorization.username
+    password = request.authorization.password
     body = request.json
     print body
     if 'operation' in body:
-        ops = body.operation
+        ops = body['operation']
         if ops == 'UPGRADE':
-            return handle_upgrade(name, request.upgrade)
+            return handle_upgrade(name, body['upgrade'], password)
         elif ops == 'VIEW':
-            return handle_view(name)
+            return handle_view(name, password)
+        elif ops == 'VOTE':
+            return handle_vote(name, body['vote'])
     else:
         return 'Incorrect request body format'
 
@@ -143,15 +155,12 @@ Office Forest admin page
   - /admin/delete/<name>  : delete a plant
     """
 
-
 @app.route('/admin/register', methods = ['PUT'])
 @requires_json
 def api_register():
-    if request.registration is None:
-        return 'No registration details found'
-    plant_name = request.registration.name
-    plant_type = request.registration.plant_type
-    password = request.registration.password
+    plant_name = request.json['name']
+    plant_type = request.json['plant_type']
+    password = request.json['password']
     plant_list[plant_name] = Plant(name=plant_name,
                                    plant_type=plant_type,
                                    password=password)

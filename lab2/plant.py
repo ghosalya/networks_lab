@@ -1,7 +1,6 @@
 '''
 Data structure for office forest
 '''
-from flask import json
 
 
 class PlantUpgrade:
@@ -15,7 +14,7 @@ class PlantUpgrade:
 
     @property
     def cost(self):
-        return self.cost
+        return self._cost
 
 
 available_upgrades = {'backlight':PlantUpgrade('Backlight',3),
@@ -38,8 +37,8 @@ class Plant:
                                 .format(plant=name))
 
     def voted_by(self, voter):
-        if voter not in self.voters:
-            self.voters.append(voter)
+        if voter.name not in self.voters:
+            self.voters.append(voter.name)
             self.votes += 1
             Plant.event_log.append('{voter} voted for {voted}'\
                                    .format(voter=voter.name, voted=self.name))
@@ -64,11 +63,11 @@ class Plant:
                           'type': self.type,
                           'votes': self.votes,
                           'upgrades': [up.name for up in self.upgrades]}
-        return json.dumps(self_parameter)
+        return self_parameter
 
     def to_private_json(self, password):
         if self.password != password:
-            return json.dumps({'error':'wrong password'})
+            return {'message':'wrong password'}
         self_parameter = {'name':self.name,
                           'type': self.type,
                           'votes': self.votes,
@@ -78,7 +77,7 @@ class Plant:
                                             .format(upgrade=up, cost=available_upgrades[up].cost)
                                             for up in available_upgrades 
                                             if up not in self.upgrades]}
-        return json.dumps(self_parameter)
+        return self_parameter
 
 
 
