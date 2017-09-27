@@ -171,8 +171,9 @@ def api_delete(plant_name):
     if plant_name not in plant_list:
         return 'Plant does not exist'
     del plant_list[plant_name]
-    return 'deleted {}'.format(plant_name)
-
+    msg = 'deleted {}'.format(plant_name)
+    event_log.append(msg)
+    return msg
 
 if __name__ == '__main__':
     app.run()

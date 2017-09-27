@@ -45,6 +45,10 @@ class ClientConsole:
                 self.vote(vote)
             elif command == 'create':
                 self.admin_create()
+            elif 'delete' in command:
+                args = command.split()
+                deleted = args[1]
+                self.delete(deleted)
             elif command == 'quit' or command == '\q':
                 break
             else:
@@ -213,6 +217,18 @@ Available upgrade:
                           json=payload,
                           headers={'content-type':'application/json'})
         print(r.text)
+
+    def delete(self, name):
+        url = '{host}:{port}/admin/delete/{name}'\
+              .format(host=self.host, port=self.port,
+                      name=name)
+        print('requesting {}'.format(url))
+        r = requests.delete(url, 
+                          auth=(self.username, self.password), 
+                          headers={'content-type':'application/json'})
+        print(r.text)
+
+
 
 
 
