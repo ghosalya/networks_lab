@@ -11,7 +11,7 @@ Gede Ria Ghosalya - 1001841
 from socket import *
 from time import sleep
 from datetime import datetime
-import argparse
+import argparse, struct
 from threading import Thread
 
 from barrier import Barrier
@@ -35,7 +35,8 @@ if __name__=="__main__":
         print("python2 client.py -r 3.0:")
     else:
         sock = socket(AF_INET, SOCK_DGRAM)
-        server_address = ('localhost', 5555)
+        # server_address = ('localhost', 5555)
+        server_address = ('10.0.0.2', 5555)
         packet_len = (args.rate * 1000000/8)
         if(packet_len < 10):
             print("WARNING: rate must be more than 10 Bps ({} Bps given)".format(packet_len))
@@ -67,13 +68,14 @@ if __name__=="__main__":
         data_id = 0
         packets = 0
         total_byte = 0
+        running = True
     	while len(msg_byte) > 0:
             msg_len = len(msg_byte)
             packet_cut = min(msg_len,seg_maxlen)
             pax_data = msg_byte[:packet_cut]
             msg_byte = msg_byte[packet_cut:]
                 
-            seg_id = bytes(data_id)
+            seg_id = struct.pack('q', data_id)
             total_pax = seg_id + pax_data
             sent = sock.sendto(total_pax, server_address)
             packets += 1
@@ -82,33 +84,41 @@ if __name__=="__main__":
             #in case of segment id overflow
             if data_id+1 >= 256:
                 data_id = 0
+            else:
+                data_id += 1
 
-            timed_barrier.wait()
+            running = timed_barrier.wait()
         return packets, total_byte
 
 
     timer = Thread(target=timer_thread_gen(timed_barrier))
     # sender = Thread(target=datagram_processing_thread)
     
-    starttime = datetime.now()
-    timer.start()
-    pax, total = datagram_processing_thread(msg_byte, server_address)
-    endtime = datetime.now()
-    timed_barrier.stop()
-    # sender.start()
 
-    deltatime = endtime - starttime
-    duration = deltatime.seconds + 10**(-6)*deltatime.microseconds
-    actual_speed = total/duration
-    percentage = 100*actual_speed/packet_len
-    overhead = total - len(msg_byte)
-    print("\nUDP Report")
-    print("Client rate is {} Mbps ({} Bps).".format(args.rate, packet_len))
-    print("Message size: {} Bytes".format(len(msg_byte)))
-    print("  in {} packets ({} total bytes sent, {} Bytes overhead)"\
-            .format(pax, total, overhead))
-    print("Duration: {}".format(duration))
-    print("Rate: {:.2f} Bps ({:.2f}%)".format(actual_speed, percentage))
+    try:
+        starttime = datetime.now()
+        timer.start()
+        pax, total = datagram_processing_thread(msg_byte, server_address)
+        endtime = datetime.now()
+        timed_barrier.stop()
+        # sender.start()
+
+        deltatime = endtime - starttime
+        duration = deltatime.seconds + 10**(-6)*deltatime.microseconds
+        actual_speed = total/duration
+        percentage = 100*actual_speed/packet_len
+        overhead = total - len(msg_byte)
+        print("\nUDP Report")
+        print("Client rate is {} Mbps ({} Bps).".format(args.rate, packet_len))
+        print("Message size: {} Bytes".format(len(msg_byte)))
+        print("  in {} packets ({} total bytes sent, {} Bytes overhead)"\
+                .format(pax, total, overhead))
+        print("Duration: {}".format(duration))
+        print("Rate: {:.2f} Bps ({:.2f}%)".format(actual_speed, percentage))
+
+    except KeyboardInterrupt:
+        timed_barrier.stop()
+
 
 
 
