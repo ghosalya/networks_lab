@@ -115,6 +115,8 @@ if __name__=="__main__":
                 .format(pax, total, overhead))
         print("Duration: {}".format(duration))
         print("Rate: {:.2f} Bps ({:.2f}%)".format(actual_speed, percentage))
+        print("\n to simulate sending a file, use the following commanf \n     -f <filename>")
+        print(" a 'messageme' file should be included (2.2MB), \n you can try with -f messageme")
 
     except KeyboardInterrupt:
         timed_barrier.stop()
