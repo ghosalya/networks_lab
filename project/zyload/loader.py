@@ -8,21 +8,15 @@ class Zyloader:
 	Zyload file uploader/downloader
 	'''
 	FILEPART_MAXSIZE = 1024
-	DEFAULT_LOOKUP_TRY = 5
+	
 	FILEHOST_PORT = 5555
 
 	def __init__(self, server=None, drive_path='.zyload'):
 		self.drive_path = drive_path
 		self.server = server
-
 		self.zyload_files = {} #fileuri-zyloadfile pair
+		self.requests = {} #fileadress-zyloadrequest pair
 
-		self.current_lookup = (None, None)
-		self.lookup_tries = {}
-		self.lookup_result = {} #list of ip with that filepart
-
-		self.tcp_connections = {} #IP-socket pair
-		self.streams = {} #fileaddress-ZyloadFilepart pair
 
 	@staticmethod
 	def _get_fp_key(uri, idd):
@@ -32,84 +26,19 @@ class Zyloader:
 		'''
 		return uri+idd
 
-	def is_local(self, file_uri, part_id):
-		filepath = os.path.join(self.drive_path, file_uri, part_id + '.zylo')
-		return os.path.exists(filepath)
-
 	#=====
 	#  File loading
-	#=====
-
-	def lookup(self, filepart_address):
-		'''
-		filepart address is in (file_uri, part_id)
-		'''
-		if is_local(*filepart_address):
-			self.stream[filepart_address] = ZyloadFilepart.from_local()
-		else:
-			self.current_lookup = (file_uri, part_id)
-			self.lookup_tries = DEFAULT_LOOKUP_TRY
-			key = self._get_fp_key(file_uri, part_id)
-			self.server.get(key).addCallback(self.lookupDone)
-
-	def lookup_retry(self):
-		'''
-		filepart address is in (file_uri, part_id)
-		'''
-		key = self._get_fp_key(*self.current_lookup)
-		self.server.get(key).addCallback(self.lookupDone)	
-
-	def lookupDone(self, result):
-		if result is None:
-			# we try a few times 
-			self.lookup_tries -= 1
-			if self.lookup_tries > 0:
-				self.lookup_retry()
-			else:
-				#not found
-				self.current_lookup = (None, None)
-		else:
-			# found a few IP
-			self.lookup_result = result[:]
-			self.current_lookup = (None, None)
-
-	def connect_filepart_host(self, ip):
-		'''
-		Once lookup is done and we know where the filepart is,
-		use TCP connection to make a TCP stream that can be
-		treated as a file stream
-		'''
-		host_address = (ip, FILEHOST_PORT)
-		if ip in self.tcp_connections:
-			sock = self.tcp_connections[ip]
-		else:
-			sock = socket(AF_INET, SOCK_STREAM)
-			self.tcp_connections[ip] = sock
-		sock.connect(host_address)
-
-	def load_local_filepart(self, file_uri, part_id):
-		'''
-		args:
-		- file_uri: 16bit file URI
-		- part_id: file part identifier
-		- data: bytearray to write
-		'''
-		filepath = os.path.join(self.drive_path, file_uri, part_id + '.zyl')
-		return open(filepath. 'rb')
+	#=====	
 
 	def request_part(self, zyload_file, part_id):
 		uri = zyload_file.file_uri
+		request = ZyloadRequest(self, zyload_file)
 
 		if uri not in self.zyload_files:
 			self.zyload_files[uri] = zyload_file
 
 		filepart_address = (uri, part_id)
 		self.lookup(filepart_address)
-		# self.lookup_queue.append(filepart_address)
-
-	def return_request(self, file_uri, part_id, filepart):
-		self.zyload_files[file_uri].recv_part(part_id, filepart)
-
 
 	#====
 	#   saving
@@ -136,11 +65,122 @@ class Zyloader:
 	
 
 	def main(self):
-		#1. send ZyloadFile part requests to network
+		#1. listen to request from network
 
-		#1b. return any response to corresponding Zyfile
-
-		#2. listen to request from network
-
-		#2b. open up socketServer for each 
+		#1b. open up socketServer for each 
 		pass
+
+
+from enum import Enum
+
+class ZyloadRequest:
+
+	DEFAULT_LOOKUP_TRY = 5
+
+	#Request Status
+
+	class ReqStatus(Enum):
+		IDLE = "IDLE"
+		SUCCESS = "SUCCESS"
+		REQUESTING = "REQUESTING kademlia key"
+		LOADING = "LOADING stream/file"
+		RETRYING = "RETRYING request"
+		FAILED = "FAILED"
+
+	def __init__(self, loader, zyload_file):
+		self.zyload_file = zyload_file
+		self.loader = loader
+		self.file_uri = zyload_file.file_uri
+		self.part_id = zyload_file.part_id
+		self.server = self.loader.server
+
+		self.lookup_tries = ZyloadRequest.DEFAULT_LOOKUP_TRY
+		self.lookup_result = []
+		self.stream = None
+		self.status = ReqStatus.IDLE
+
+	def is_local(self):
+		filepath = os.path.join(self.loader.drive_path, 
+								self.file_uri, self.part_id + '.zyl')
+		return os.path.exists(filepath)
+
+	def _get_fp_key(self):
+		return self.loader._get_fp_key(self.file_uri, self.part_id)
+
+	def lookup(self):
+		'''
+		filepart address is in (file_uri, part_id)
+		'''
+		if self.is_local():
+			self.stream = ZyloadFilepart\
+						  .from_local(self.load_local_filepart())
+			self.status = ReqStatus.SUCCESS
+			self.zyload_file.recv_part(self.part_id,
+									   ZyloadFilepart.from_local((self.file_uri,
+									   							  self.part_id),
+									   							 self.stream))
+		else:
+			self.current_lookup = (file_uri, part_id)
+			self.lookup_tries = DEFAULT_LOOKUP_TRY
+			key = self._get_fp_key()
+			self.status = ReqStatus.REQUESTING
+			self.server.get(key).addCallback(self.lookupDone)
+
+	def lookup_retry(self):
+		'''
+		filepart address is in (file_uri, part_id)
+		'''
+		self.status = ReqStatus.RETRYING
+		key = self._get_fp_key(*self.current_lookup)
+		self.server.get(key).addCallback(self.lookupDone)	
+
+	def lookupDone(self, result):
+		if result is None:
+			# we try a few times 
+			self.lookup_tries -= 1
+			if self.lookup_tries > 0:
+				self.lookup_retry()
+			else:
+				#not found
+				self.status = ReqStatus.FAILED
+		else:
+			# found a few IP
+			self.lookup_result = result[:]
+			self.status = ReqStatus.LOADING
+
+	def get_remote_filestream(self):
+		if len(self.lookup_result) > 0:
+			ip = self.lookup_result.pop()
+			try:
+				self.stream = self.connect_filepart_host(ip)
+				self.status = ReqStatus.SUCCESS
+				self.zyload_file.recv_part(self.part_id,
+										   ZyloadFilepart.from_socket((self.file_uri,
+										   	                           self.part_id),
+										                              self.stream))
+			except:
+				self.get_remote_filestream()
+		else:
+			self.status = ReqStatus.FAILED
+
+	def load_local_filestream(self):
+		'''
+		args:
+		- file_uri: 16bit file URI
+		- part_id: file part identifier
+		- data: bytearray to write
+		'''
+		filepath = os.path.join(self.loader.drive_path, 
+								self.file_uri, self.part_id + '.zyl')
+		return open(filepath. 'rb')
+
+	def connect_filepart_host(self, ip):
+		'''
+		Once lookup is done and we know where the filepart is,
+		use TCP connection to make a TCP stream that can be
+		treated as a file stream
+		'''
+		host_address = (ip, Zyloader.FILEHOST_PORT)
+		sock = socket(AF_INET, SOCK_STREAM)
+		sock.connect(host_address)
+		return sock

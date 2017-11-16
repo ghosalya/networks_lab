@@ -15,12 +15,40 @@
 2. 
 
 
+# Structure
+
+a) client.py
+  
+  User-facing script to interact with the network. 
+  + can add files to network (ideally download from internet)
+  + can read file from network
+  + can lookup and set kademlia key-value pair
+
+b) filepart.py
+
+  Contains `ZyloadFile` class that ideally behaves like a normal file object.
+  Opens from a `.zylo` file.
+
+  Also contains `ZyloadFilepart`, a representation of the filepart for the access.
+  Opens from a `.zyl` file.
+
+c) loader.py
+
+  Contains `Zyloader` class, which is a background service that the client code can interact with in order to reach the network. 
+
+  It also has `ZyloadRequest` class that does asynchronous requesting of the file.
+  + lookup() search within the kademlia as to where the file part lives
+  + load_local_filestream() and get_remote_filestream() that get the filestream
+  + will pass a proper filepart to its corresponding file.
+
+d) zserver.sh and server.tac.py
+
+  server for kademlia DHT network
+  
+
+
 # User Story
 + Download & store-distribute
-
-    1) download bit-by-bit
-    2) 
-
 + Open & lazyly load
 
 

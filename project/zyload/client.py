@@ -7,6 +7,7 @@ from twisted.python import log
 from kademlia.network import Server
 
 # import daemon
+from loader import Zyloader
 
 CONFIG_FILE = "zyload.conf"
 
@@ -33,7 +34,7 @@ class ZyloadClient:
 		'''
 		create a kademlia.Server to listen to the network
 		'''
-		log.startLogging(sys.stdout)
+		# log.startLogging(sys.stdout)
 		self.server = self.server or Server()
 		self.server.listen(self.port)
 		self.server.bootstrap([(ip, port)])\
@@ -59,6 +60,13 @@ class ZyloadClient:
 			print self.get_key(user_input[1])
 		elif "set" == user_input[0]:
 			self.set_key(user_input[1], user_input[2])
+		elif "add_file" == user_input[0]:
+			#add file to the Zyload network
+			pass
+		elif "read" == user_input[0]:
+			#create ZyloadFile and read from it
+			pass
+
 
 
 if __name__ == '__main__':
