@@ -1,1 +1,0 @@
-twistd -noy server.tac.py

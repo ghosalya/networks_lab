@@ -5,6 +5,12 @@ import os.path
 from threading import Thread
 from socket import *
 
+def get_local_ip():
+	import commands
+	return commands.getoutput("/sbin/ifconfig")\
+				   .split("\n")[1]\
+				   .split()[1][5:]
+
 class Zyserver:
 	'''
 	handles file transfer via tcp
@@ -13,7 +19,8 @@ class Zyserver:
 		self.listening = False
 		self.port = port
 		self.socket = socket(AF_INET, SOCK_STREAM)
-		self.socket.bind((gethostname(), port))
+		# self.socket.bind((gethostname(), port))
+		self.socket.bind((get_local_ip(), port))
 
 
 	def listen(self):
@@ -39,12 +46,12 @@ class Zyconnection(Thread):
 
 		while request is None:
 			try:
-				req = self.clientsocket.recv()
+				req = self.clientsocket.recv(1024)
 				if not req: break
-				print "Request type: {}".format(req)
+				print "Request: {}".format(req)
 				# format is [mode][fileuri][part]
-				if "[filepart-request]" in req 
-					or "[file-sending]" in req:
+				if "[filepart-request]" in req\
+					or "[file-sending]" in req: 
 					request = req
 				else:
 					#should re-request
@@ -61,7 +68,8 @@ class Zyconnection(Thread):
 		self.clientsocket.sendall("[mode_accepted:{}]".format(request))
 
 		# 3. handles remaning data
-		req_param = request.strip('[').split(']')
+		req_param = request.split(']')
+		req_param = [s.strip('[') for s in req_param]
 
 		if "filepart-request" == req_param[0]:
 			self.handle_request(req_param[1], req_param[2])
@@ -99,22 +107,31 @@ class Zyconnection(Thread):
 	def handle_receive(self, file_uri, part_id):
 		# right now it overrides existing
 
+		filedir = os.path.join('.zyload', file_uri)
+		if not os.path.exists(filedir):
+			os.makedirs(filedir)
+
 		filepath = os.path.join('.zyload', file_uri, part_id+".zyl")
-		f = open(filepath, 'w')
+		f = open(filepath, 'w+')
 
 		accepting = True
 
 		while accepting:
-			try:
-				accepted_data = self.clientsocket.recv(1024)
-				if '[end]' in accepted_data:
-					accepting = False
-					accepted_data.strip('[end]')
+			accepted_data = self.clientsocket.recv(1024)
+			if '[end]' in accepted_data:
+				accepting = False
+				accepted_data.strip('[end]')
 				f.write(accepted_data)
-			except:
-				print "Error bro"
-				break
+				self.clientsocket.sendall("accepted[end]")
+			else:
+				f.write(accepted_data)
+				self.clientsocket.sendall("accepted")
+
 
 		f.close()
 		self.clientsocket.close()
 		
+
+if __name__ == '__main__':
+	zs = Zyserver()
+	zs.listen()

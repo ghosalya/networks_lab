@@ -66,7 +66,8 @@ class Zyloader:
 			chosen_machine = random.choice(ips)
 
 			# self.server.set(key, strings[i]).addCallback(self.printSet, file_uri, i)
-			self.server.set(key, chosen_machine)\
+			self.save_remote_filepart(file_uri, str(i), strings[i], chosen_machine[0])
+			self.server.set(key, chosen_machine[0])\
 					   .addCallback(self.printSet, file_uri, i)
 			# 
 			# -- store on all machine
@@ -78,9 +79,40 @@ class Zyloader:
 		print "{};{} - set {} in {}"\
 			  .format(file_uri, part_id, result, target)
 
-	def save_remote_filepart(self, file_uri, part_id, data):
-		#should introduce file hashes to prevent merging problem
-		pass
+	def save_remote_filepart(self, file_uri, part_id, data, host):
+		s = socket(AF_INET, SOCK_STREAM)
+		print host, 7171
+		s.connect((host, 7171)) #TCP port
+
+		# 1. send indicator packet
+
+		indi_packet = "[file-sending][{}][{}]".format(file_uri, part_id)
+
+		while True:	
+			s.sendall(indi_packet)
+			response = s.recv(1024)
+			if response == "[mode_corrupted]":
+				continue
+			elif response == "[mode_accepted:{}]".format(indi_packet):
+				break
+
+		# 2. start sending
+		
+		datta = list(data + "[end]")
+		current_packet = datta[:1024]
+		del datta[:1024]
+
+		while True:
+			s.sendall(''.join(current_packet))
+			response = s.recv(1024)
+			if response == "accepted":
+				current_packet = datta[:1024]
+				del datta[:1024]
+			elif response == "accepted[end]":
+				s.close()
+				break
+
+
 
 	def save_local_filepart(self, file_uri, part_id, data):
 		'''

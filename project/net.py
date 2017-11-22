@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-# Lab 6 network script
-# Based on original BGP exercise
-# Nils, SUTD, 2015
 
 from mininet.topo import Topo
 from mininet.net import Mininet
@@ -31,7 +28,7 @@ class myTopo( Topo ):
         # Initialize topology
         Topo.__init__( self )
 
-        desktops = [self.addHost( 'h%d'%i ) for i in range(5)]
+        desktops = [self.addHost( 'h%d'%i ) for i in range(3)]
         # leftSwitch = self.addSwitch( 's1' )
         # rightSwitch = self.addSwitch( 's2' )
         comswitch = self.addSwitch('s0')
@@ -43,26 +40,20 @@ class myTopo( Topo ):
 
 def log(s, col="green"):
     print T.colored(s, col)
-    
-def startWebserver(net, hostname, text="Default web server"):
-    host = net.getNodeByName(hostname)
-    return host.popen("python webserver.py --text '%s'" % text, shell=True)
 
 def main():
     os.system("rm -f /tmp/R*.log /tmp/R*.pid logs/*")
     os.system("mn -c >/dev/null 2>&1")
-    os.system('pgrep -f webserver.py | xargs kill -9')
     os.system("killall -9 dnsmasq")
-    #os.system("service isc-dhcpd-server stop")
 
     net = Mininet(topo=myTopo(), controller = OVSController, autoSetMacs=True)
     net.start()
         
     log("Configured the routers")
 
-    for i in range(5):
+    for i in range(3):
         host = net.getNodeByName('h%d'%i)
-        host.cmd("cd h%d && twistd -noy ../zyload/server.tac.py &"%i)
+        host.cmd("cd h%d && twistd -noy ../zyload/server.tac.py & python ../zyload/connect.py"%i)
         #host.cmd("route add default gw 10.0.0.1")
         log("Kademlia server started for h%d"%i)
 

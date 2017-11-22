@@ -15,11 +15,10 @@ CONFIG_FILE = "zyload.conf"
 
 
 class ZyloadClient:
-	def __init__(self, ip, port, log=False):
+	def __init__(self, ip, port):
 		self.server = None
 		self.ip = ip
 		self.port = port
-		self.log_enabled = log
 		self.load_config()
 		self.initiate_kademlia(ip, 8468)
 		self.zyloader = None
@@ -37,8 +36,7 @@ class ZyloadClient:
 		'''
 		create a kademlia.Server to listen to the network
 		'''
-		if self.log_enabled:
-			log.startLogging(sys.stdout)
+		log.startLogging(sys.stdout)
 		self.server = self.server or Server()
 		self.server.listen(self.port)
 		self.zyloader = Zyloader(server=self.server)
@@ -87,11 +85,14 @@ class ZyloadClient:
 		else:
 			self.CLI("unrecognized command", server)
 
+
 def get_local_ip():
 	import commands
+	return commands.getoutput("/sbin/ifconfig")\
+				   .split("\n")[1]\
+				   .split()[1][5:]
 
 
 if __name__ == '__main__':
-	ip = raw_input("Main IP:").strip("\n")
-	logg = raw_input("Log?") == "y\n"
-	zlc = ZyloadClient(ip or '10.0.0.1', 5552, log=logg)
+	# ip = raw_input("Main IP:").strip("\n")
+	zlc = ZyloadClient(get_local_ip(), 5552)
