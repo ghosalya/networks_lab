@@ -4,9 +4,10 @@ class ZyloadFile:
 	'''
 	Behaves like a file object
 	'''
-	def __init__(self, file_uri, zyloader):
+	def __init__(self, file_uri, zyloader, length=1):
 		self.file_uri = file_uri
 		self.zyloader = zyloader
+		self.part_count = length
 		self.loaded_parts = {} #partid-ZyloadFilepart pair
 
 	def set_zyloader(self, zyloader):
@@ -15,7 +16,7 @@ class ZyloadFile:
 			self.loaded_parts = {}
 
 	def load_part(self, part_id):
-		if self.zyloader = None:
+		if self.zyloader is None:
 			print "ERROR: Zyloader not set"
 			return
 		self.zyloader.request_part(self, part_id)
@@ -31,8 +32,14 @@ class ZyloadFile:
 		self.zyloader = None
 		self.loaded_parts = {}
 
-	def read(self, size):
-		pass
+	def load_all(self):
+		for i in range(self.part_count):
+			self.load_part(i)
+
+	def read(self):
+		whole = ""
+		for key, stream in self.loaded_parts:
+			whole += stream.read()
 
 	def write(self, data):
 		pass

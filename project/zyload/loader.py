@@ -1,4 +1,4 @@
-import os
+import os, hashlib, random
 from socket import *
 
 from filepart import ZyloadFilepart
@@ -43,6 +43,40 @@ class Zyloader:
 	#====
 	#   saving
 	#====
+
+	def upload_local_file(self, fileobject, filename):
+		# since server is yet to be here,
+		# we split files and store as value
+		filedata = fileobject.read()
+		ips = self.server.bootstrappableNeighbors()
+
+		strings = []
+		file_uri = hashlib.md5(filedata.encode()).hexdigest()
+		# length = len(filedata)/len(ips)
+		length = Zyloader.FILEPART_MAXSIZE
+		print('IPS found: {}'.format(ips))
+
+		while len(filedata) > 0:
+			strings.append(filedata[0:length])
+			filedata = filedata[length:]
+
+		for i in range(len(strings)):
+			key = Zyloader._get_fp_key(file_uri, str(i))
+
+			chosen_machine = random.choice(ips)
+
+			# self.server.set(key, strings[i]).addCallback(self.printSet, file_uri, i)
+			self.server.set(key, chosen_machine)\
+					   .addCallback(self.printSet, file_uri, i)
+			# 
+			# -- store on all machine
+		with open(filename + '.zylo', 'w') as zylo:
+			zylo.write(file_uri +'\n'+str(len(strings)))
+			zylo.close()
+
+	def printSet(self, result, file_uri, part_id, target):
+		print "{};{} - set {} in {}"\
+			  .format(file_uri, part_id, result, target)
 
 	def save_remote_filepart(self, file_uri, part_id, data):
 		#should introduce file hashes to prevent merging problem
@@ -172,7 +206,7 @@ class ZyloadRequest:
 		'''
 		filepath = os.path.join(self.loader.drive_path, 
 								self.file_uri, self.part_id + '.zyl')
-		return open(filepath. 'rb')
+		return open(filepath, 'rb')
 
 	def connect_filepart_host(self, ip):
 		'''

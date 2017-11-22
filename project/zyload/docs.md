@@ -1,8 +1,13 @@
-# File format
+# Zyload
+
+by Gede Ria Ghosalya (1001841)
+for 50.012 Networks project
+
+## File format
 .zylo -> Zyloader File Representation
 .zyl -> Zyloader part file
 
-# Usage
+## Usage
 
 0. Install python dependencies
 
@@ -10,12 +15,19 @@
 
 1. Run kademlia server in one shell window (ideally this will be daemon/autolaunched)
 
-    ./zserver.sh
+    $ ./zserver.sh
 
-2. 
+2. Run client.py
+
+    $ python client.py
+
+3. 2 commands that can be tested:
+  a) add_file `filename` adds the content of file to the network.
+     It will create a `filename.zylo` file
+  b) read `filename.zylo` prints the content of the file stored in network.
 
 
-# Structure
+## Structure
 
 a) client.py
   
@@ -44,17 +56,22 @@ c) loader.py
 d) zserver.sh and server.tac.py
 
   server for kademlia DHT network
-  
 
 
-# User Story
-+ Download & store-distribute
+
+## User Story
+
 + Open & lazyly load
+  1) client.py will load a `.zylo` file as a ZyloadFile object
+  2) as we call ZyloadFile.read(), the file will request from the available Zyloader
+  3) Zyloader will create a new ZyloadRequest for each part of the file that is read
+  4) multiple ZyloadRequest objects looking up and loading file parts
+  5) lookup returns a ZyloadFilepart that is fed into ZyloadFile
+  6) ZyloadFile reads from relevant part and returns it to client code
 
 
 
-
-# Issues
+## Issues
 
 possible proble:
 - network node is down, file part unavailable

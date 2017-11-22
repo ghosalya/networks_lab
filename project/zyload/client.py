@@ -8,18 +8,21 @@ from kademlia.network import Server
 
 # import daemon
 from loader import Zyloader
+from filepart import ZyloadFile
 
 CONFIG_FILE = "zyload.conf"
 
 
 
 class ZyloadClient:
-	def __init__(self, ip, port):
+	def __init__(self, ip, port, log=False):
 		self.server = None
 		self.ip = ip
 		self.port = port
+		self.log_enabled = log
 		self.load_config()
 		self.initiate_kademlia(ip, 8468)
+		self.zyloader = None
 
 	def load_config(self):
 		self.config = {}
@@ -34,9 +37,11 @@ class ZyloadClient:
 		'''
 		create a kademlia.Server to listen to the network
 		'''
-		# log.startLogging(sys.stdout)
+		if self.log_enabled:
+			log.startLogging(sys.stdout)
 		self.server = self.server or Server()
 		self.server.listen(self.port)
+		self.zyloader = Zyloader(server=self.server)
 		self.server.bootstrap([(ip, port)])\
 				   .addCallback(self.CLI, self.server)
 		reactor.run()
@@ -61,13 +66,32 @@ class ZyloadClient:
 		elif "set" == user_input[0]:
 			self.set_key(user_input[1], user_input[2])
 		elif "add_file" == user_input[0]:
-			#add file to the Zyload network
-			pass
+			with open(user_input[1], 'rb') as ui:
+				self.zyloader.upload_local_file(ui, user_input[1])
+				self.CLI('idk', self.server)
 		elif "read" == user_input[0]:
 			#create ZyloadFile and read from it
-			pass
+			if os.path.exists(user_input[1]):
+				with open(user_input[1], 'r') as zylo:
+					file_uri = zylo.readline().strip('\n')
+					lenn = zylo.readline()
+					lenn = int(lenn)
+					# zylo.close()
+					# zyfile = ZyloadFile(file_uri, self.loader, lenn)
+					for i in range(lenn):
+						self.get_key(file_uri+str(i))
+			else:
+				self.CLI("zylo file not found", server)
+		elif "exit" == user_input[0]:
+			exit()
+		else:
+			self.CLI("unrecognized command", server)
 
+def get_local_ip():
+	import commands
 
 
 if __name__ == '__main__':
-	zlc = ZyloadClient('10.0.0.105', 5552)
+	ip = raw_input("Main IP:").strip("\n")
+	logg = raw_input("Log?") == "y\n"
+	zlc = ZyloadClient(ip or '10.0.0.1', 5552, log=logg)
