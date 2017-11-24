@@ -44,7 +44,6 @@ def log(s, col="green"):
 def main():
     os.system("rm -f /tmp/R*.log /tmp/R*.pid logs/*")
     os.system("mn -c >/dev/null 2>&1")
-    os.system("killall -9 dnsmasq")
 
     net = Mininet(topo=myTopo(), controller = OVSController, autoSetMacs=True)
     net.start()
@@ -53,8 +52,7 @@ def main():
 
     for i in range(3):
         host = net.getNodeByName('h%d'%i)
-        host.cmd("cd h%d && twistd -noy ../zyload/server.tac.py & python ../zyload/connect.py"%i)
-        #host.cmd("route add default gw 10.0.0.1")
+        host.cmd("cd h%d && ./server.sh &"%i)
         log("Kademlia server started for h%d"%i)
 
     CLI(net)

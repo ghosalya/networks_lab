@@ -9,6 +9,16 @@ for 50.012 Networks project
 
 ## Usage
 
+### Testing
+
+For the sake of test, we added a mininet script that simulates 3 machines (h0, h1, h2) that runs the necessary servers. 
+
+1. adding file
+
++ in mininet open `xterm` for h1. 
++ `cd` into the folder `h1` (where the server are running from). 
++ run `client.sh`
+
 0. Install python dependencies
 
     $ pip install -r requirements.txt

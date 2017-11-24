@@ -73,11 +73,11 @@ class ZyloadClient:
 				with open(user_input[1], 'r') as zylo:
 					file_uri = zylo.readline().strip('\n')
 					lenn = zylo.readline()
-					lenn = int(lenn)
-					# zylo.close()
-					# zyfile = ZyloadFile(file_uri, self.loader, lenn)
-					for i in range(lenn):
-						self.get_key(file_uri+str(i))
+					lenn = int(lenn) 
+					zylo.close()
+
+					zyfile = ZyloadFile(file_uri, self.zyloader, lenn)
+					self.CLI(zyfile.read(), self.server)
 			else:
 				self.CLI("zylo file not found", server)
 		elif "exit" == user_input[0]:

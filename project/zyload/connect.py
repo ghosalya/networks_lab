@@ -29,11 +29,13 @@ class Zyserver:
 		while self.listening:
 			clientsocket, address = self.socket.accept()
 			zycon = Zyconnection(self, clientsocket)
-			zycon.run()
+			# zycon.run()
+			zycon.start()
 
 
 class Zyconnection(Thread):
 	def __init__(self, zyserver, clientsocket):
+		super(Zyconnection,self).__init__()
 		self.zyserver = zyserver
 		self.clientsocket = clientsocket
 
@@ -87,6 +89,17 @@ class Zyconnection(Thread):
 			return
 
 		f = open(filepath, 'r')
+		try:
+			data = f.reads()
+			self.clientsocket.sendall(current_packet)
+			self.clientsocket.recv(1024)
+			#if anything is received, close socket
+			self.clientsocket.close()
+		except:
+			return
+
+		'''
+		#transfer with ack
 		current_packet = f.read(1024)
 
 		while transferring:
@@ -103,6 +116,7 @@ class Zyconnection(Thread):
 
 		f.close()
 		self.clientsocket.close()
+		'''
 
 	def handle_receive(self, file_uri, part_id):
 		# right now it overrides existing
